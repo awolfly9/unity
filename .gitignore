@@ -3,3 +3,4 @@
 plugin
 log
 
+*.pyc
