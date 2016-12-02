@@ -1,6 +1,7 @@
 *.log
 *.json
+*.pyc
+
+Plugins
 plugin
 log
-
-*.pyc

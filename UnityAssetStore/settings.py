@@ -56,7 +56,7 @@ ROBOTSTXT_OBEY = False
 # See http://scrapy.readthedocs.org/en/latest/topics/downloader-middleware.html
 DOWNLOADER_MIDDLEWARES = {
     'scrapy.contrib.downloadermiddleware.httpproxy.HttpProxyMiddleware': 1020,
-    #'UnityAssetStore.middlewares.ProxyMiddleware': 100,
+    'UnityAssetStore.middlewares.ProxyMiddleware': 100,
 }
 
 # Enable or disable extensions
@@ -91,3 +91,5 @@ ITEM_PIPELINES = {
 #HTTPCACHE_DIR = 'httpcache'
 #HTTPCACHE_IGNORE_HTTP_CODES = []
 #HTTPCACHE_STORAGE = 'scrapy.extensions.httpcache.FilesystemCacheStorage'
+
+HTTPERROR_ALLOWED_CODES = [409]

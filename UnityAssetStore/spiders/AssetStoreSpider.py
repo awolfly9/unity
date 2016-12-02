@@ -4,6 +4,7 @@ import copy
 import re
 import json
 import time
+import os
 from scrapy.selector import Selector
 from scrapy.spiders import Spider
 from scrapy.utils.response import get_base_url
@@ -13,201 +14,228 @@ from scrapy.linkextractors.sgml import SgmlLinkExtractor as sle
 from scrapy.http.cookies import CookieJar
 from scrapy.http import Request, FormRequest
 
+
 class AssetStoreSpider(Spider):
-    name = "assetstore"
+	name = "assetstore"
 
-    # 开始运行爬虫是调用
-    def start_requests(self):
-        # 获取分类的 json 文件的 url 地址
-        urls = [
-            "https://www.assetstore.unity3d.com/api/en-US/home/categories.json"
-        ]
+	start_urls = [
+		# unity asset store 所有分类的 json 地址
+		'https://www.assetstore.unity3d.com/api/en-US/home/categories.json'
+	]
 
-        for i, url in enumerate(urls):
-            yield Request(
-                url=url,
-                meta={'cookiejar': i},
-                method = 'GET',
-                headers={
-                    'Accept': '*/*',
-                    'Accept-Encoding': 'gzip, deflate, br',
-                    'Accept-Language': 'zh-CN,zh;q=0.8,en-US;q=0.5,en;q=0.3',
-                    'Cache-Control': 'max-age=0',
-                    'Connection': 'keep-alive',
-                    'Host': 'www.assetstore.unity3d.com',
-                    'Referer': 'https://www.assetstore.unity3d.com/en/',
-                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.11; rv:50.0) Gecko/20100101 Firefox/50.0',
-                    'X-Kharma-Version': '5.4.0-r87646',
-                    'X-Requested-With': 'UnityAssetStore',
-                    'X-Unity-Session': '26c4202eb475d02864b40827dfff11a14657aa41',
-                },
-                callback=self.get_categories
-            )
+	plugin_list = []
 
-    # 获取到分类的 json 文件
-    def get_categories(self, response):
+	dir_plugins = 'Plugins/'
 
-        self.write_file('categories.json', response.body)
+	# TODO。。。 先获取版本信息
+	headers = {
+		'Accept': '*/*',
+		'Accept-Encoding': 'gzip, deflate, br',
+		'Accept-Language': 'zh-CN,zh;q=0.8,en-US;q=0.5,en;q=0.3',
+		'Connection': 'keep-alive',
+		'Host': 'www.assetstore.unity3d.com',
+		'Referer': 'https://www.assetstore.unity3d.com/en/',
+		'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.11; rv:50.0) Gecko/20100101 Firefox/50.0',
+		'X-Kharma-Version': '5.5.0-r87731',
+		'X-Requested-With': 'UnityAssetStore',
+		'X-Unity-Session': '26c4202eb475d02864b40827dfff11a14657aa41',
+	}
 
-        #加载分类的 json 文件
-        categories = json.loads(response.body)
+	# 开始运行爬虫时调用
+	def start_requests(self):
+		for i, url in enumerate(self.start_urls):
+			yield Request(
+					url = url,
+					meta = {
+						'cookiejar': i
+					},
+					method = 'GET',
+					headers = self.headers,
+					callback = self.get_categories,
+			)
 
-        # 从具体的搜索页面中重新获取所有的分类的 json 文件，第一次获取的插件数量不对
-        for category in categories['categories']:
-            name = category['name']
-            id = category['id']
-            url = 'https://www.assetstore.unity3d.com/api/en-US/search/results.json?q=' + 'category:' + id + '&rows=36' + \
-                  '&page=' + str(1) + '&order_by=popularity' + '&engine=solr'
+	# 获取到分类的 json 文件
+	def get_categories(self, response):
+		self.write_file(self.dir_plugins + 'categories.json', response.body)
 
-            yield Request(
-                url = url,
-                meta = {
-                    'cookiejar': response.meta['cookiejar'],
-                    'file_name': category['name'],
-                    'category': id,
-                    'name': category['name'],
-                },
-                method = 'GET',
-                dont_filter = True,
-                headers = {
-                    'Accept': '*/*',
-                    'Accept-Encoding': 'gzip, deflate, br',
-                    'Accept-Language': 'zh-CN,zh;q=0.8,en-US;q=0.5,en;q=0.3',
-                    'Cache-Control': 'max-age=0',
-                    'Connection': 'keep-alive',
-                    'Host': 'www.assetstore.unity3d.com',
-                    'Referer': 'https://www.assetstore.unity3d.com/en/',
-                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.11; rv:50.0) Gecko/20100101 Firefox/50.0',
-                    'X-Kharma-Version': '5.4.0-r87646', 'X-Requested-With': 'UnityAssetStore',
-                    'X-Unity-Session': '26c4202eb475d02864b40827dfff11a14657aa41',
-                },
-                callback = self.get_category_plugin_count
-            )
+		# 加载分类的 json 文件
+		categories = json.loads(response.body)
 
-    # 获取每一个分类的插件的数量，并分页获取插件，一次性获取 36 个插件
-    def get_category_plugin_count(self, response):
-        #print('get_category_plugin_count proxy:%s' % response.meta['proxy'])
-        category = json.loads(response.body)
-        total = category['total']
-        self.log('category total:' + str(total))
+		for category in categories.get('categories'):
+			name = category.get('name', '')
+			subs = category.get('subs', '')
+			dir_name = self.dir_plugins + name
+			self.make_dir(dir_name)
 
-        # 以每页 36 个插件读取
-        page_count = total / 36
-        if total % 36 != 0:
-            page_count = page_count + 1
+			if subs is not '':
+				self.get_all_subs(subs, dir_name, response)
 
-        for page in range(1, page_count + 1):
-            id = response.meta['category']
-            url = 'https://www.assetstore.unity3d.com/api/en-US/search/results.json?q=' + 'category:' + id + '&rows=36' + \
-                  '&page=' + str(page) + '&order_by=popularity' + '&engine=solr'
+		for plugin in self.plugin_list:
+			id = plugin.get('id', '')
+			count = plugin.get('count')
+			dir_name = plugin.get('dir_name')
+			name = plugin.get('name')
 
-            yield Request(
-                    url = url,
-                    meta = {
-                        'cookiejar': response.meta['cookiejar'],
-                        'file_name': response.meta['name'] + '_' + str(page),
-                    },
-                    method = 'GET',
-                    dont_filter = True,
-                    headers = {
-                        'Accept': '*/*',
-                        'Accept-Encoding': 'gzip, deflate, br',
-                        'Accept-Language': 'zh-CN,zh;q=0.8,en-US;q=0.5,en;q=0.3',
-                        'Cache-Control': 'max-age=0',
-                        'Connection': 'keep-alive',
-                        'Host': 'www.assetstore.unity3d.com',
-                        'Referer': 'https://www.assetstore.unity3d.com/en/',
-                        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.11; rv:50.0) Gecko/20100101 Firefox/50.0',
-                        'X-Kharma-Version': '5.4.0-r87646',
-                        'X-Requested-With': 'UnityAssetStore',
-                        'X-Unity-Session': '26c4202eb475d02864b40827dfff11a14657aa41',
-                    },
+			yield Request(
+					url = 'https://www.assetstore.unity3d.com/api/en-US/search/results.json?q=' + 'category:' + id + \
+					      '&rows=' + count + '&page=' + str(1) + '&order_by=popularity' + '&engine=solr',
+					method = 'GET',
+					dont_filter = True,
+					headers = self.headers,
+					meta = {
+						'cookiejar': response.meta['cookiejar'],
+						'dir_name': dir_name,
+						'name': name,
+					},
+					callback = self.get_plugin_list,
+			)
 
-                    callback = self.get_plugin_list
-                )
+	# ###
+	def get_all_subs(self, subs, dir, response):
+		for sub in subs:
+			#self.log(sub)
 
-    # 获取到一页的插件
-    def get_plugin_list(self, response):
-        #self.log('get_plugin_list:\n' + response.body)
+			# 提取信息
+			name = sub.get('name', '')
+			count = sub.get('count', 0)
+			id = sub.get('id', 0)
+			child_subs = sub.get('subs', '')
 
-        file_name = response.meta['file_name'].replace(u'/', u'_')
-        self.write_file('log/%s.json' % response.meta['file_name'], response.body)
+			# 处理数据
+			dir_name = dir + '/' + name
+			self.make_dir(dir_name)
 
-        plugins = json.loads(response.body)
+			plugin = {}
+			plugin['name'] = name
+			plugin['count'] = count
+			plugin['id'] = id
+			plugin['dir_name'] = dir_name
 
-        for plugin in plugins['results']:
-            id = plugin['id']
+			self.plugin_list.append(plugin)
 
-            url = 'https://www.assetstore.unity3d.com/api/en-US/content/overview/' + id + '.json'
-            yield Request(url = url,
-                meta = {
-                    'cookiejar': response.meta['cookiejar'],
-                    'file_name': id + '_' + plugin['title'],
-                },
-                headers = {
-                    'Accept': '*/*',
-                    'Accept-Encoding': 'gzip, deflate, br',
-                    'Accept-Language': 'zh-CN,zh;q=0.8,en-US;q=0.5,en;q=0.3',
-                    'Cache-Control': 'max-age=0',
-                    'Connection': 'keep-alive',
-                    'Host': 'www.assetstore.unity3d.com',
-                    'Referer': 'https://www.assetstore.unity3d.com/en/',
-                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.11; rv:50.0) Gecko/20100101 Firefox/50.0',
-                    'X-Kharma-Version': '5.4.0-r87646',
-                    'X-Requested-With': 'UnityAssetStore',
-                    'X-Unity-Session': '26c4202eb475d02864b40827dfff11a14657aa41',
-                },
-                method = 'GET',
-                dont_filter = True, callback = self.get_plugin
-            )
+			if child_subs is not '':
+				self.get_all_subs(child_subs, dir_name, response)
 
-    # 具体的获取到每一个插件，并存储获取到的 json 文件
-    def get_plugin(self, response):
-        file_name = response.meta['file_name'].replace(u'/', u'_')
-        self.write_file('plugin/%s.json' % file_name, response.body)
-    #
-    #     plugin = json.loads(response.body)
-    #     content = plugin.get('content', '')
-    #     #self.log('key_image:' + str(key_image))
-    #     key_image = content['keyimage']
-    #     #self.log('key_image:' + str(key_image))
-    #     icon = key_image['icon75']
-    #     'http://d2ujflorbtfzji.cloudfront.net/key-image/9e17b026-08c0-4f8e-b7cd-53176a3104d6.png'
-    #     self.log('icon:' + icon)
-    #     names = str(icon).split(u'/')
-    #     name = names[len(names) - 1]
-    #     icon = 'http:'+ icon
-    #
-    #     yield Request(
-    #         url = icon,
-    #         headers = {
-    #             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-    #             'Accept-Encoding': 'gzip, deflate',
-    #             'Accept-Language': 'zh-CN,zh;q=0.8,en-US;q=0.5,en;q=0.3',
-    #             'Connection': 'd2ujflorbtfzji.cloudfront.net',
-    #             'Upgrade-Insecure-Requests': '1',
-    #             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.11; rv:50.0) Gecko/20100101 Firefox/50.0',
-    #         },
-    #         meta = {
-    #             'cookiejar': response.meta['cookiejar'],
-    #             'file_name': name,
-    #         },
-    #         method = 'GET',
-    #         dont_filter = True,
-    #         callback = self.get_icon
-    #
-    #     )
-    #
-    # def get_icon(self, response):
-    #     #self.log(response.body)
-    #     with open('img/%s' % response.meta['file_name'], 'w') as f:
-    #         f.write(response.body)
-    #         f.close()
+	# 获取到一页的插件
+	def get_plugin_list(self, response):
+		self.log('get_plugin_list:%s' % response.url)
 
-    def format_json(self, data):
-        return json.dumps(json.loads(data), indent = 4)
+		file_name = response.meta['dir_name'] + '/' + response.meta['name'] + '.json'
+		self.write_file(file_name, self.format_json(response.body))
 
-    def write_file(self, file_name, data):
-        with open("%s" % file_name, 'w') as f:
-            f.write(self.format_json(data))
-            f.close()
+		dir_plugins = json.loads(response.body)
+		results = dir_plugins.get('results', '')
+		if results is not '':
+			for plugin in results:
+				id = plugin.get('id', '')
+				'https://www.assetstore.unity3d.com/api/en-US/content/overview/19480.json'
+				url = 'https://www.assetstore.unity3d.com/api/en-US/content/overview/' + id + '.json'
+				yield Request(
+						url = url,
+						meta = {
+							'cookiejar': response.meta['cookiejar'],
+							'dir_name': response.meta['dir_name'],
+							'id': id,
+						},
+						headers = self.headers,
+						method = 'GET',
+						dont_filter = True,
+						callback = self.get_plugin_json,
+				)
+
+	# 具体的获取到每一个插件，并存储获取到的 json 文件
+	def get_plugin_json(self, response):
+		plugin = json.loads(response.body)
+		content = plugin.get('content', '')
+		title = content.get('title')
+		title = title.replace('/', '_')
+
+		dir_name = response.meta['dir_name']
+		dir_name = dir_name + '/' + title
+		self.make_dir(dir_name)
+
+		file_name = dir_name + '/' + title + '.json'
+		self.write_file(file_name, self.format_json(response.body))
+
+		rating = content.get('rating')
+		count = rating.get('count', '')
+		id = response.meta['id']
+
+		# 获取插件的所有评论
+		if count is not '' and count is not 'null' and count is not None:
+			yield Request(
+				#'https://www.assetstore.unity3d.com/api/en-US/content/comments/61491/3.json'
+				url = 'https://www.assetstore.unity3d.com/api/en-US/content/comments/' + id + '/' + count + '.json',
+				method = 'GET',
+				dont_filter = True,
+				headers = self.headers,
+				meta = {
+					'dir_name': dir_name,
+					'name': title,
+					'content': content,
+					'cookiejar': response.meta['cookiejar'],
+				},
+				callback = self.get_plugin_user_reviews,
+			)
+
+	# 获取插件的所有评论
+	def get_plugin_user_reviews(self, response):
+		self.log('get_plugin_user_reviews:%s' % response.url)
+		self.log('get_plugin_user_reviews:%s' % response.meta['dir_name'])
+		file_name = response.meta['dir_name'] + '/' + response.meta['name'] + '_user_reviews.json'
+		self.write_file(file_name, self.format_json(response.body))
+
+		content = response.meta['content']
+		title = response.meta['name']
+		dir_name = response.meta['dir_name']
+
+		images = content.get('images')
+		for i, image in enumerate(images):
+			link = image.get('link', '')
+			if 'http' not in link:
+				link = 'http:' + link
+			self.log('link:%s' % link)
+			name = image.get('name', title + '_' + str(i) + '.jpg')
+			name = name.replace('/', '_')
+			type = image.get('type', '')
+
+			# 目前只下载所有截图，视频和模型，音频等暂时忽略
+			# TODO...
+			if type == 'screenshot':
+				if link is not '' and link is not None:
+					yield Request(
+							url = link,
+							method = 'GET',
+							dont_filter = True,
+							meta = {
+								'dir_name': dir_name,
+								'name': name,
+								'cookiejar': response.meta['cookiejar'],
+							},
+							callback = self.get_plugin_image,
+					)
+
+	# 获取插件的所有截图
+	def get_plugin_image(self, response):
+		self.log('get_plugin_image:%s' % response.url)
+		self.log('get_plugin_image:%s' % response.meta['dir_name'])
+		dir_name = response.meta['dir_name']
+		name = response.meta['name']
+
+		file_name = dir_name + '/' + name
+		with open(file_name, 'wb') as f:
+			f.write(response.body)
+			f.close()
+
+	def make_dir(self, dir):
+		self.log('make dir:%s' % dir)
+		if not os.path.exists(dir):
+			os.makedirs(dir)
+
+	def format_json(self, data):
+		return json.dumps(json.loads(data), indent = 4)
+
+	def write_file(self, file_name, data):
+		with open("%s" % file_name, 'w') as f:
+			f.write(self.format_json(data))
+			f.close()
