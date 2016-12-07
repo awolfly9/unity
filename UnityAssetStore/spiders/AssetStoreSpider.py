@@ -1,20 +1,10 @@
 # -*- coding: utf-8 -*-
-
-import copy
+import os
 import re
 import json
 import time
-import os
-from scrapy.selector import Selector
 from scrapy.spiders import Spider
-from scrapy.utils.response import get_base_url
-from scrapy.utils.url import urljoin_rfc
-from scrapy.spiders import CrawlSpider, Rule
-from scrapy.linkextractors.sgml import SgmlLinkExtractor as sle
-from scrapy.http.cookies import CookieJar
 from scrapy.http import Request, FormRequest
-from datetime import datetime
-
 
 class AssetStoreSpider(Spider):
 	name = "assetstore"
@@ -24,14 +14,16 @@ class AssetStoreSpider(Spider):
 		'https://www.assetstore.unity3d.com/login'
 	]
 
-
+	# 所有插件的一个列表
 	plugin_list = []
 
+	# 存储插件下载的目录
 	dir_plugins = 'Plugins/'
 
+	# unity 的版本
 	unity_version = ''
 
-	# TODO。。。 先获取版本信息
+	# 请求 header
 	headers = {
 		'Accept': '*/*',
 		'Accept-Encoding': 'gzip, deflate, br',
@@ -45,7 +37,7 @@ class AssetStoreSpider(Spider):
 		'X-Unity-Session': '26c4202eb475d02864b40827dfff11a14657aa41',
 	}
 
-	# 开始运行爬虫时调用
+	# 开始运行爬虫时调用，请求 unity 版本信息
 	def start_requests(self):
 		for i, url in enumerate(self.start_urls):
 			yield FormRequest(
@@ -76,7 +68,8 @@ class AssetStoreSpider(Spider):
 					callback = self.get_unity_version,
 			)
 
-	#获取到 unity asset store 发布的版本
+	#获取到 unity asset store 发布的版本，
+	# 并发送请求分类的消息
 	def get_unity_version(self, response):
 		content = json.loads(response.body)
 		self.unity_version = content.get('kharma_version', '')
@@ -95,7 +88,8 @@ class AssetStoreSpider(Spider):
 				callback = self.get_categories,
 		)
 
-	# 获取到分类的 json 文件
+	# 获取到分类的 json 文件，并得到所有 unity 插件分类的列表
+	# 提交请求每一个分类插件信息的消息
 	def get_categories(self, response):
 		self.log(response.body)
 		self.write_file(self.dir_plugins + 'categories.json', response.body)
@@ -158,7 +152,8 @@ class AssetStoreSpider(Spider):
 			if child_subs is not '':
 				self.get_all_subs(child_subs, dir_name, response)
 
-	# 获取到一页的插件
+	# 获取一个类别的 unity 插件
+	# 提交请求每一个插件的信息
 	def get_plugin_list(self, response):
 		self.log('get_plugin_list:%s' % response.url)
 
@@ -185,7 +180,8 @@ class AssetStoreSpider(Spider):
 						callback = self.get_plugin_json,
 				)
 
-	# 具体的获取到每一个插件，并存储获取到的 json 文件
+	# 具体的获取到一个插件，并存储获取到的 json 文件
+	# 请求获取插件的评论
 	def get_plugin_json(self, response):
 		plugin = json.loads(response.body)
 		content = plugin.get('content', '')
@@ -222,42 +218,44 @@ class AssetStoreSpider(Spider):
 			)
 
 	# 获取插件的所有评论
+	# 并请求插件的所有屏幕截图
 	def get_plugin_user_reviews(self, response):
-		self.log('get_plugin_user_reviews:%s' % response.url)
 		self.log('get_plugin_user_reviews:%s' % response.meta['dir_name'])
 		file_name = response.meta['dir_name'] + '/' + response.meta['name'] + '_user_reviews.json'
 		self.write_file(file_name, self.format_json(response.body))
 
-		content = response.meta['content']
-		title = response.meta['name']
-		dir_name = response.meta['dir_name']
+		# 暂时不请求插件的图片
+		# content = response.meta['content']
+		# title = response.meta['name']
+		# dir_name = response.meta['dir_name']
+		#
+		# images = content.get('images')
+		# for i, image in enumerate(images):
+		# 	link = image.get('link', '')
+		# 	if 'http' not in link:
+		# 		link = 'http:' + link
+		# 	self.log('link:%s' % link)
+		# 	name = image.get('name', title + '_' + str(i) + '.jpg')
+		# 	name = name.replace('/', '_')
+		# 	type = image.get('type', '')
+		#
+		# 	# 目前只下载所有截图.
+		# 	# 视频和模型，音频等暂时忽略
+		# 	# TODO...
+		# 	if type == 'screenshot':
+		# 		if link is not '' and link is not None:
+		# 			yield Request(
+		# 					url = link,
+		# 					method = 'GET',
+		# 					dont_filter = True,
+		# 					meta = {
+		# 						'dir_name': dir_name,
+		# 						'name': name,
+		# 						'cookiejar': response.meta['cookiejar'],
+		# 					},
+		# 					callback = self.get_plugin_image,
+		# 			)
 
-		images = content.get('images')
-		for i, image in enumerate(images):
-			link = image.get('link', '')
-			if 'http' not in link:
-				link = 'http:' + link
-			self.log('link:%s' % link)
-			name = image.get('name', title + '_' + str(i) + '.jpg')
-			name = name.replace('/', '_')
-			type = image.get('type', '')
-
-			# 目前只下载所有截图.
-			# 视频和模型，音频等暂时忽略
-			# TODO...
-			if type == 'screenshot':
-				if link is not '' and link is not None:
-					yield Request(
-							url = link,
-							method = 'GET',
-							dont_filter = True,
-							meta = {
-								'dir_name': dir_name,
-								'name': name,
-								'cookiejar': response.meta['cookiejar'],
-							},
-							callback = self.get_plugin_image,
-					)
 
 	# 获取插件的所有截图
 	def get_plugin_image(self, response):
