@@ -13,19 +13,23 @@ from scrapy.spiders import CrawlSpider, Rule
 from scrapy.linkextractors.sgml import SgmlLinkExtractor as sle
 from scrapy.http.cookies import CookieJar
 from scrapy.http import Request, FormRequest
+from datetime import datetime
 
 
 class AssetStoreSpider(Spider):
 	name = "assetstore"
 
 	start_urls = [
-		# unity asset store 所有分类的 json 地址
-		'https://www.assetstore.unity3d.com/api/en-US/home/categories.json'
+		#获取 unity 版本信息
+		'https://www.assetstore.unity3d.com/login'
 	]
+
 
 	plugin_list = []
 
 	dir_plugins = 'Plugins/'
+
+	unity_version = ''
 
 	# TODO。。。 先获取版本信息
 	headers = {
@@ -36,7 +40,7 @@ class AssetStoreSpider(Spider):
 		'Host': 'www.assetstore.unity3d.com',
 		'Referer': 'https://www.assetstore.unity3d.com/en/',
 		'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.11; rv:50.0) Gecko/20100101 Firefox/50.0',
-		'X-Kharma-Version': '5.5.0-r87731',
+		'X-Kharma-Version': unity_version,
 		'X-Requested-With': 'UnityAssetStore',
 		'X-Unity-Session': '26c4202eb475d02864b40827dfff11a14657aa41',
 	}
@@ -44,18 +48,56 @@ class AssetStoreSpider(Spider):
 	# 开始运行爬虫时调用
 	def start_requests(self):
 		for i, url in enumerate(self.start_urls):
-			yield Request(
+			yield FormRequest(
 					url = url,
+					headers = {
+						'Accept': 'application/json',
+						'Accept-Encoding': 'gzip, deflate, br',
+						'Accept-Language': 'zh-CN,zh;q=0.8,en-US;q=0.5,en;q=0.3',
+						'Connection': 'keep-alive',
+						'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+						'Host': 'www.assetstore.unity3d.com',
+						'Referer': 'https://www.assetstore.unity3d.com/en/',
+						'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.11; rv:50.0) Gecko/20100101 Firefox/50.0',
+						'X-Kharma-Version': '0',
+						'X-Requested-With': 'UnityAssetStore',
+						'X-Unity-Session': '26c4202eb475d02864b40827dfff11a14657aa41',
+					},
+					method = 'POST',
+					formdata = {
+						'current_package_id': '',
+						'hardware_hash': '',
+						'language_code': 'en',
+						'license_hash': '',
+					},
 					meta = {
 						'cookiejar': i
 					},
-					method = 'GET',
-					headers = self.headers,
-					callback = self.get_categories,
+					callback = self.get_unity_version,
 			)
+
+	#获取到 unity asset store 发布的版本
+	def get_unity_version(self, response):
+		content = json.loads(response.body)
+		self.unity_version = content.get('kharma_version', '')
+		self.headers['X-Kharma-Version'] = self.unity_version
+
+		# unity asset store 所有分类的 json 地址
+		url = 'https://www.assetstore.unity3d.com/api/en-US/home/categories.json'
+
+		yield Request(
+				url = url,
+				meta = {
+					'cookiejar': response.meta['cookiejar'],
+				},
+				method = 'GET',
+				headers = self.headers,
+				callback = self.get_categories,
+		)
 
 	# 获取到分类的 json 文件
 	def get_categories(self, response):
+		self.log(response.body)
 		self.write_file(self.dir_plugins + 'categories.json', response.body)
 
 		# 加载分类的 json 文件
@@ -164,18 +206,19 @@ class AssetStoreSpider(Spider):
 		# 获取插件的所有评论
 		if count is not '' and count is not 'null' and count is not None:
 			yield Request(
-				#'https://www.assetstore.unity3d.com/api/en-US/content/comments/61491/3.json'
-				url = 'https://www.assetstore.unity3d.com/api/en-US/content/comments/' + id + '/' + count + '.json',
-				method = 'GET',
-				dont_filter = True,
-				headers = self.headers,
-				meta = {
-					'dir_name': dir_name,
-					'name': title,
-					'content': content,
-					'cookiejar': response.meta['cookiejar'],
-				},
-				callback = self.get_plugin_user_reviews,
+					#'https://www.assetstore.unity3d.com/api/en-US/content/comments/61491/3.json'
+					url = 'https://www.assetstore.unity3d.com/api/en-US/content/comments/' + id + '/' + count +
+					      '.json',
+					method = 'GET',
+					dont_filter = True,
+					headers = self.headers,
+					meta = {
+						'dir_name': dir_name,
+						'name': title,
+						'content': content,
+						'cookiejar': response.meta['cookiejar'],
+					},
+					callback = self.get_plugin_user_reviews,
 			)
 
 	# 获取插件的所有评论
@@ -199,7 +242,8 @@ class AssetStoreSpider(Spider):
 			name = name.replace('/', '_')
 			type = image.get('type', '')
 
-			# 目前只下载所有截图，视频和模型，音频等暂时忽略
+			# 目前只下载所有截图.
+			# 视频和模型，音频等暂时忽略
 			# TODO...
 			if type == 'screenshot':
 				if link is not '' and link is not None:

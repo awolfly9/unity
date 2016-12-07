@@ -3,5 +3,6 @@
 *.pyc
 
 Plugins
+other
 plugin
 log
