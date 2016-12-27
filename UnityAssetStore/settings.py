@@ -58,7 +58,6 @@ DOWNLOADER_MIDDLEWARES = {
     'scrapy.contrib.downloadermiddleware.httpproxy.HttpProxyMiddleware': 1020,
     'UnityAssetStore.middlewares.ProxyMiddleware': 100,
 }
-
 # Enable or disable extensions
 # See http://scrapy.readthedocs.org/en/latest/topics/extensions.html
 #EXTENSIONS = {
