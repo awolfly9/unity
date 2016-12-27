@@ -16,8 +16,8 @@ class ProxyMiddleware(object):
                 ip = proxy.get('ip')
                 port = proxy.get('port')
                 address = '%s:%s' % (ip, port)
-                #request.meta['proxy'] = "http://%s" % proxy['ip_port']
+
                 request.meta['proxy'] = 'http://%s' % address
                 logging.info('********ProxyMiddleware proxy*******:%s' % request.meta['proxy'] )
-        except:
-            pass
+        except Exception, e:
+            logging.warning('ProxyMiddleware Exception:%s' % str(e))
