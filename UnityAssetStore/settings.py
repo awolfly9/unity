@@ -55,7 +55,7 @@ ROBOTSTXT_OBEY = False
 # Enable or disable downloader middlewares
 # See http://scrapy.readthedocs.org/en/latest/topics/downloader-middleware.html
 DOWNLOADER_MIDDLEWARES = {
-    'scrapy.contrib.downloadermiddleware.httpproxy.HttpProxyMiddleware': 1020,
+    #'scrapy.contrib.downloadermiddleware.httpproxy.HttpProxyMiddleware': 1020,
     'UnityAssetStore.middlewares.ProxyMiddleware': 100,
 }
 # Enable or disable extensions
@@ -66,9 +66,9 @@ DOWNLOADER_MIDDLEWARES = {
 
 # Configure item pipelines
 # See http://scrapy.readthedocs.org/en/latest/topics/item-pipeline.html
-ITEM_PIPELINES = {
-   'scrapy.contrib.pipeline.images.FilesPipeline': 1,
-}
+# ITEM_PIPELINES = {
+#    'scrapy.contrib.pipeline.images.FilesPipeline': 1,
+# }
 
 # Enable and configure the AutoThrottle extension (disabled by default)
 # See http://doc.scrapy.org/en/latest/topics/autothrottle.html

@@ -4,7 +4,7 @@ import logging
 from scrapy import cmdline
 
 logging.basicConfig(
-        filename= 'log/mian.log',
+        filename= 'log/main.log',
         format='%(levelname)s %(asctime)s: %(message)s',
         level=logging.DEBUG
     )
