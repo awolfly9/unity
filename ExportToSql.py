@@ -12,18 +12,55 @@ table_name = 'unityassetstore'
 
 sql = SqlHelper()
 
+
+def create_table():
+    commond = ("CREATE TABLE IF NOT EXISTS {} ("
+               "`id` INT(6) NOT NULL PRIMARY KEY UNIQUE,"
+               "`name` TEXT NOT NULL,"
+               "`asset_url` TEXT DEFAULT NULL,"
+               "`rating_count` INT(4) DEFAULT 0,"
+               "`rating_comments_count` INT(4) DEFAULT 0,"
+               "`rating_comments_ratio` FLOAT DEFAULT 0.0,"
+               "`rating_average` INT(4) DEFAULT 0,"
+               "`rating_five` INT(4) DEFAULT 0,"
+               "`rating_five_ratio` FLOAT(4) DEFAULT 0.0,"
+               "`rating_four` INT(4) DEFAULT 0,"
+               "`rating_three` INT(4) DEFAULT 0,"
+               "`rating_two` INT(4) DEFAULT 0,"
+               "`rating_one` INT(4) DEFAULT 0,"
+               "`pubdate` TEXT NOT NULL,"
+               "`category` TEXT NOT NULL,"
+               "`version` TEXT NOT NULL,"
+               "`price_USD` FLOAT DEFAULT NULL,"
+               "`price_JPY` FLOAT DEFAULT NULL,"
+               "`price_DKK` FLOAT DEFAULT NULL,"
+               "`price_EUR` FLOAT DEFAULT NULL,"
+               "`sizetext` TEXT DEFAULT NULL,"
+               "`publisher_name` TEXT DEFAULT NULL,"
+               "`publisher_url` TEXT DEFAULT NULL,"
+               "`publisher_support_url` TEXT DEFAULT NULL,"
+               "`publisher_email` TEXT DEFAULT NULL,"
+               "`first_published_at` TEXT DEFAULT NULL"
+               ") ENGINE=InnoDB".format(table_name))
+
+    sql.create_table(commond)
+
 def export_to_sql():
     for i, file in enumerate(os.listdir(dir_all)):
         file_name = '%s/%s' % (dir_all, file)
-        log(file_name)
+        log('export_to_sql file_name:%s' % file_name)
 
         insert_to_sql(file_name)
-
 
 def insert_to_sql(file_name):
     names = file_name.split('_')
     if names[len(names) - 1] == 'list.json' or names[len(names) - 1] == 'comments.json':
         return
+
+    if file_name.find('.json') == -1:
+        return
+
+    log('insert_to_sql file_name:%s' % file_name)
 
     with open(file_name, 'r') as f:
         plugin_source = f.read()
@@ -125,6 +162,7 @@ if __name__ == '__main__':
             level = logging.NOTSET
     )
 
+    create_table()
     export_to_sql()
 
 

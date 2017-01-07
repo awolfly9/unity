@@ -70,7 +70,6 @@ class AssetStoreSpider(Spider):
                         'license_hash': '',
                     },
                     meta = {
-                        'cookiejar': i
                     },
                     callback = self.get_unity_version,
             )
@@ -88,9 +87,6 @@ class AssetStoreSpider(Spider):
 
         yield Request(
                 url = url,
-                meta = {
-                    'cookiejar': response.meta['cookiejar'],
-                },
                 method = 'GET',
                 headers = self.headers,
                 callback = self.get_categories,
@@ -126,7 +122,6 @@ class AssetStoreSpider(Spider):
                     dont_filter = True,
                     headers = self.headers,
                     meta = {
-                        'cookiejar': response.meta['cookiejar'],
                         'dir_name': dir_name,
                         'name': name,
                     },
@@ -177,7 +172,6 @@ class AssetStoreSpider(Spider):
                 yield Request(
                         url = url,
                         meta = {
-                            'cookiejar': response.meta['cookiejar'],
                             'dir_name': response.meta['dir_name'],
                             'id': id,
                         },
@@ -219,7 +213,6 @@ class AssetStoreSpider(Spider):
                         'dir_name': dir_name,
                         'name': title,
                         'content': content,
-                        'cookiejar': response.meta['cookiejar'],
                     },
                     callback = self.get_plugin_user_reviews,
             )
@@ -258,7 +251,6 @@ class AssetStoreSpider(Spider):
     # 					meta = {
     # 						'dir_name': dir_name,
     # 						'name': name,
-    # 						'cookiejar': response.meta['cookiejar'],
     # 					},
     # 					callback = self.get_plugin_image,
     # 			)
