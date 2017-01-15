@@ -345,7 +345,7 @@ if __name__ == '__main__':
     sys.setdefaultencoding('utf-8')
 
     logging.basicConfig(
-            filename = 'main.log',
+            filename = 'log/assetstore.log',
             format = '%(levelname)s %(asctime)s: %(message)s',
             level = logging.NOTSET
     )
