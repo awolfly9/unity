@@ -107,7 +107,7 @@ class AssetStore(object):
             'license_hash': '',
         }
 
-        r = requests.get(url, headers = headers, timeout = 5)
+        r = requests.get(url, headers = headers, timeout = 20)
         self.log('get_unity_version text:\n%s' % r.text)
 
         data = json.loads(r.text)
@@ -116,7 +116,7 @@ class AssetStore(object):
 
     def get_categories(self):
         url = 'https://www.assetstore.unity3d.com/api/en-US/home/categories.json'
-        r = requests.get(url = url, headers = self.headers, timeout = 5)
+        r = requests.get(url = url, headers = self.headers, timeout = 20)
         self.cookies = r.cookies
         #self.log('get_categories text:\n%s' % r.text)
 
@@ -263,7 +263,7 @@ class AssetStore(object):
                         e, url, dir_name, name, id), logging.WARNING)
                 continue
 
-        file_name = id + '_' + name + '.json'
+        file_name = self.dir_all + '/' + id + '_' + name + '.json'
         insert_to_sql(file_name)
 
     def get_all_subs(self, subs, dir):

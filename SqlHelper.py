@@ -35,7 +35,7 @@ class SqlHelper(Singleton):
 
     def create_database(self):
         try:
-            self.cursor.execute('create database %s DEFAULT CHARACTER SET \'utf8\' ' % self.database_name)
+            self.cursor.execute('CREATE DATABASE IF NOT EXISTS %s DEFAULT CHARACTER SET \'utf8\' ' % self.database_name)
         except Exception, e:
             log('SqlHelper create_database exception:%s' % str(e), logging.WARNING)
 

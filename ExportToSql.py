@@ -45,12 +45,14 @@ def create_table():
 
     sql.create_table(commond)
 
+
 def export_to_sql():
     for i, file in enumerate(os.listdir(dir_all)):
         file_name = '%s/%s' % (dir_all, file)
         log('export_to_sql file_name:%s' % file_name)
 
         insert_to_sql(file_name)
+
 
 def insert_to_sql(file_name):
     names = file_name.split('_')
@@ -137,15 +139,14 @@ def insert_to_sql(file_name):
         rating_two = comment_source.count('"rating": "2"')
         rating_one = comment_source.count('"rating": "1"')
 
-    command = ("INSERT INTO {} "
+    command = ("INSERT IGNORE INTO {} "
                "(id, name, asset_url, rating_count, rating_comments_count, rating_comments_ratio, "
                "rating_average, rating_five, rating_five_ratio, rating_four, rating_three, "
                "rating_two, rating_one, pubdate, category, version, price_USD, price_JPY, price_DKK, "
                "price_EUR, sizetext, publisher_name, publisher_url, publisher_support_url, publisher_email, "
                "first_published_at)"
                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, "
-               "%s, %s, %s, %s, %s)".format(
-            table_name))
+               "%s, %s, %s, %s, %s)".format(table_name))
 
     msg = (id, name, asset_url, rating_count, rating_comments_count, rating_comments_ratio, rating_average,
            rating_five, rating_five_ratio, rating_four, rating_three, rating_two, rating_one, pubdate,
@@ -154,6 +155,7 @@ def insert_to_sql(file_name):
            publisher_url, publisher_support_url, publisher_email, first_published_at)
 
     sql.insert_data(command, msg)
+
 
 if __name__ == '__main__':
     logging.basicConfig(
@@ -164,5 +166,3 @@ if __name__ == '__main__':
 
     create_table()
     export_to_sql()
-
-
