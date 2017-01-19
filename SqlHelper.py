@@ -4,30 +4,22 @@
 import json
 import logging
 import random
+import traceback
+import mysql.connector
 
 from Singleton import Singleton
-
-import mysql.connector
 from mysql.connector import errorcode
 from utils import log
-import traceback
+from config import *
 
 
 class SqlHelper(Singleton):
     def __init__(self):
-        self.database_name = 'assetstore'
-
-        self.config = {
-            'host': 'localhost',
-            'port': 3306,
-            'user': 'root',
-            'password': '123456',
-        }
-
+        self.database_name = database_name
         self.init()
 
     def init(self):
-        self.database = mysql.connector.connect(**self.config)
+        self.database = mysql.connector.connect(**database_config)
         self.cursor = self.database.cursor()
 
         self.create_database()

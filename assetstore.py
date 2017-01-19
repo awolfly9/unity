@@ -8,6 +8,7 @@ import traceback
 import sys
 from SqlHelper import SqlHelper
 from ExportToSql import insert_to_sql
+from utils import *
 
 
 class AssetStore(object):
@@ -20,8 +21,8 @@ class AssetStore(object):
 
         self.dir_plugins = 'Plugins/'
         self.dir_all = self.dir_plugins + 'all'
-        self.make_dir(self.dir_plugins)
-        self.make_dir(self.dir_all)
+        make_dir(self.dir_plugins)
+        make_dir(self.dir_all)
 
         self.cookies = None
         self.headers = {
@@ -37,51 +38,14 @@ class AssetStore(object):
             'X-Unity-Session': '26c4202eb475d02864b40827dfff11a14657aa41',
         }
 
-        self.init()
-
-    def init(self):
-        self.create_table()
-
     def run(self):
-        self.create_table()
+        create_table(self.sql, self.table_name)
         self.unity_version = self.get_untiy_version()
         self.headers['X-Kharma-Version'] = self.unity_version
 
         self.get_categories()
 
         self.get_plugin_list()
-
-    def create_table(self):
-        commond = ("CREATE TABLE IF NOT EXISTS {} ("
-                   "`id` INT(6) NOT NULL PRIMARY KEY UNIQUE,"
-                   "`name` TEXT NOT NULL,"
-                   "`asset_url` TEXT DEFAULT NULL,"
-                   "`rating_count` INT(4) DEFAULT 0,"
-                   "`rating_comments_count` INT(4) DEFAULT 0,"
-                   "`rating_comments_ratio` FLOAT DEFAULT 0.0,"
-                   "`rating_average` INT(4) DEFAULT 0,"
-                   "`rating_five` INT(4) DEFAULT 0,"
-                   "`rating_five_ratio` FLOAT(4) DEFAULT 0.0,"
-                   "`rating_four` INT(4) DEFAULT 0,"
-                   "`rating_three` INT(4) DEFAULT 0,"
-                   "`rating_two` INT(4) DEFAULT 0,"
-                   "`rating_one` INT(4) DEFAULT 0,"
-                   "`pubdate` TEXT NOT NULL,"
-                   "`category` TEXT NOT NULL,"
-                   "`version` TEXT NOT NULL,"
-                   "`price_USD` FLOAT DEFAULT NULL,"
-                   "`price_JPY` FLOAT DEFAULT NULL,"
-                   "`price_DKK` FLOAT DEFAULT NULL,"
-                   "`price_EUR` FLOAT DEFAULT NULL,"
-                   "`sizetext` TEXT DEFAULT NULL,"
-                   "`publisher_name` TEXT DEFAULT NULL,"
-                   "`publisher_url` TEXT DEFAULT NULL,"
-                   "`publisher_support_url` TEXT DEFAULT NULL,"
-                   "`publisher_email` TEXT DEFAULT NULL,"
-                   "`first_published_at` TEXT DEFAULT NULL"
-                   ") ENGINE=InnoDB".format(self.table_name))
-
-        self.sql.create_table(commond)
 
     def get_untiy_version(self):
         url = 'https://www.assetstore.unity3d.com/login'
@@ -108,7 +72,7 @@ class AssetStore(object):
         }
 
         r = requests.get(url, headers = headers, timeout = 20)
-        self.log('get_unity_version text:\n%s' % r.text)
+        log('get_unity_version text:\n%s' % r.text)
 
         data = json.loads(r.text)
         version = data.get('kharma_version')
@@ -118,15 +82,13 @@ class AssetStore(object):
         url = 'https://www.assetstore.unity3d.com/api/en-US/home/categories.json'
         r = requests.get(url = url, headers = self.headers, timeout = 20)
         self.cookies = r.cookies
-        #self.log('get_categories text:\n%s' % r.text)
-
         categories = json.loads(r.text)
 
         for category in categories.get('categories'):
             name = category.get('name', '')
             subs = category.get('subs', '')
             dir_name = self.dir_plugins + name
-            self.make_dir(dir_name)
+            make_dir(dir_name)
 
             if subs is not '':
                 self.get_all_subs(subs, dir_name)
@@ -161,10 +123,7 @@ class AssetStore(object):
                 if child == 'no':
                     continue
 
-                self.log('get_plugin_list plugin:%s' % plugin)
-
-                'https://www.assetstore.unity3d.com/api/en-US/search/results.json?q=category%3A7&rows=36&page=1' \
-                '&order_by=popularity&engine=solr'
+                log('get_plugin_list plugin:%s' % plugin)
 
                 if int(count) % 36 == 0:
                     page = int(count) / 36
@@ -185,11 +144,11 @@ class AssetStore(object):
                     for j in range(10):
                         try:
                             r = requests.get(url = url, params = params, headers = self.headers, timeout = 10)
-                            self.log('get_plugin_list url:%s plugin:%s' % (r.url, str(plugin)))
+                            log('get_plugin_list url:%s plugin:%s' % (r.url, str(plugin)))
 
-                            file_name = name + '_list.json'
-                            self.write_file(dir_name, file_name, self.format_json(r.text))
-                            self.write_file(self.dir_all, file_name, self.format_json(r.text))
+                            file_name = dir_name + '/' + name + '_list.json'
+                            self.write_file(file_name, r.text)
+
                             data = json.loads(r.text)
                             results = data.get('results')
 
@@ -197,15 +156,15 @@ class AssetStore(object):
                             break
                         except Exception, e:
                             if j == 9:
-                                self.log('get_plugin_list exception getdata error msg:%s url:%s plugin:%s' % (
+                                log('get_plugin_list exception getdata error msg:%s url:%s plugin:%s' % (
                                     e, url, str(plugin)), logging.ERROR)
                             else:
-                                self.log('get_plugin_list exception getdata error msg:%s url:%s plugin:%s' % (
+                                log('get_plugin_list exception getdata error msg:%s url:%s plugin:%s' % (
                                     e, url, str(plugin)), logging.WARNING)
                             continue
 
             except Exception, e:
-                self.log('get_plugin_list exception get plugin list error msg:%s plugin:%s' % (e, str(plugin)))
+                log('get_plugin_list exception get plugin list error msg:%s plugin:%s' % (e, str(plugin)))
                 continue
 
     def get_plugin(self, dir_name, results):
@@ -216,8 +175,8 @@ class AssetStore(object):
             rating = result.get('rating')
             count = rating.get('count', '')
 
-            file_name = id + '_' + name + '.json'
-            if self.is_exists_sql(id):
+            file_name = dir_name + '/' + id + '_' + name + '.json'
+            if is_exists_sql(self.sql, id, self.table_name):
                 self.get_plugin_comments(dir_name, name, id, count)
                 continue
 
@@ -225,23 +184,22 @@ class AssetStore(object):
                 url = 'https://www.assetstore.unity3d.com/api/en-US/content/overview/%s.json' % id
                 try:
                     r = requests.get(url = url, headers = self.headers, timeout = 10)
-                    self.log('get_plugin url:%s ' % (url))
+                    log('get_plugin url:%s ' % (url))
 
-                    self.write_file(dir_name, file_name, self.format_json(r.text))
-                    self.write_file(self.dir_all, file_name, self.format_json(r.text))
+                    self.write_file(file_name, r.text)
                     self.get_plugin_comments(dir_name, name, id, count)
                     break
                 except Exception, e:
                     if i == 4:
-                        self.log('get_plugin exception msg:%s url:%s result:%s' % (e, url, str(result)), logging.ERROR)
+                        log('get_plugin exception msg:%s url:%s result:%s' % (e, url, str(result)), logging.ERROR)
                     else:
-                        self.log('get_plugin exception msg:%s url:%s result:%s' % (e, url, str(result)),
-                                 logging.WARNING)
+                        log('get_plugin exception msg:%s url:%s result:%s' % (e, url, str(result)),
+                            logging.WARNING)
                     continue
 
     def get_plugin_comments(self, dir_name, name, id, count):
-        file_name = id + '_' + name + '_comments.json'
-        if self.is_exists_sql(id):
+        file_name = dir_name + '/' + id + '_' + name + '_comments.json'
+        if is_exists_sql(self.sql, id, self.table_name):
             return
 
         for i in range(5):
@@ -249,26 +207,25 @@ class AssetStore(object):
             url = 'https://www.assetstore.unity3d.com/api/en-US/content/comments/%s.json' % (id)
             try:
                 r = requests.get(url = url, headers = self.headers, timeout = 10)
-                self.log('get_plugin_comments url:%s dir_name:%s name:%s id:%s' % (url, dir_name, name, id))
+                log('get_plugin_comments url:%s dir_name:%s name:%s id:%s' % (url, dir_name, name, id))
 
-                self.write_file(dir_name, file_name, self.format_json(r.text))
-                self.write_file(self.dir_all, file_name, self.format_json(r.text))
+                self.write_file(file_name, r.text)
                 break
             except Exception, e:
                 if i == 4:
-                    self.log('get_plugin_comments exception msg:%s url:%s dir_name:%s name:%s id:%s' % (
+                    log('get_plugin_comments exception msg:%s url:%s dir_name:%s name:%s id:%s' % (
                         e, url, dir_name, name, id), logging.ERROR)
                 else:
-                    self.log('get_plugin_comments exception msg:%s url:%s dir_name:%s name:%s id:%s' % (
+                    log('get_plugin_comments exception msg:%s url:%s dir_name:%s name:%s id:%s' % (
                         e, url, dir_name, name, id), logging.WARNING)
                 continue
 
         file_name = self.dir_all + '/' + id + '_' + name + '.json'
-        insert_to_sql(file_name)
+        insert_to_sql(self.sql, file_name, self.table_name)
 
     def get_all_subs(self, subs, dir):
         for sub in subs:
-            #self.log(sub)
+            #log(sub)
 
             # 提取信息
             name = sub.get('name', '')
@@ -278,7 +235,7 @@ class AssetStore(object):
 
             # 处理数据
             dir_name = dir + '/' + name
-            self.make_dir(dir_name)
+            make_dir(dir_name)
 
             plugin = {}
             plugin['name'] = name
@@ -295,49 +252,22 @@ class AssetStore(object):
             if child_subs is not '':
                 self.get_all_subs(child_subs, dir_name)
 
-    def make_dir(self, dir):
-        self.log('make dir:%s' % dir)
-        if not os.path.exists(dir):
-            os.makedirs(dir)
+    def write_file(self, file_name, data):
+        with open("%s" % file_name, 'w') as f:
+            f.write(format_json(data))
+            f.close()
 
-    def format_json(self, data):
-        try:
-            return json.dumps(json.loads(data), indent = 4)
-        except Exception, e:
-            self.log('format_json exception msg:%s' % e, logging.WARNING)
-            return data
+        names = file_name.split('/')
+        name = names[len(names) - 1]
 
-    def write_file(self, dir, file_name, data):
-        with open('%s/%s' % (dir, file_name), 'w') as f:
-            f.write(self.format_json(data))
+        with open("%s/%s" % (self.dir_all, name), 'w') as f:
+            f.write(format_json(data))
             f.close()
 
     def is_exists_plugin(self, dir, file_name):
         ret = os.path.exists('%s/%s' % (dir, file_name))
-        self.log('is_exists_plugin ret:%s file_name:%s' % (ret, file_name))
+        log('is_exists_plugin ret:%s file_name:%s' % (ret, file_name))
         return ret
-
-    def log(self, msg, level = logging.DEBUG):
-        logging.log(level, msg)
-        print('level:%s, message:%s' % (level, msg))
-
-        if level == logging.WARNING or level == logging.ERROR:
-            for line in traceback.format_stack():
-                print(line.strip())
-
-            for line in traceback.format_stack():
-                logging.log(level, line.strip())
-
-    def is_exists_sql(self, id):
-        command = 'SELECT * FROM {0} WHERE id={1}'.format(self.table_name, id)
-
-        self.sql.cursor.execute(command)
-
-        rows = self.sql.cursor.fetchone()
-        if rows == None:
-            return False
-        else:
-            return True
 
 
 if __name__ == '__main__':
@@ -351,5 +281,4 @@ if __name__ == '__main__':
     )
 
     assetstore = AssetStore()
-    assetstore.init()
     assetstore.run()
