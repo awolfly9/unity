@@ -162,35 +162,6 @@ class AssetStoreSpider(Spider):
                     callback = self.get_plugin_list,
             )
 
-    def get_all_subs(self, subs, dir):
-        for sub in subs:
-            #self.log(sub)
-
-            # 提取信息
-            name = sub.get('name', '')
-            count = sub.get('count', 0)
-            id = sub.get('id', 0)
-            child_subs = sub.get('subs', '')
-
-            # 处理数据
-            dir_name = dir + '/' + name
-            make_dir(dir_name)
-
-            plugin = {}
-            plugin['name'] = name
-            plugin['count'] = count
-            plugin['id'] = id
-            plugin['dir_name'] = dir_name
-            if child_subs == '':
-                plugin['child'] = 'yes'
-            else:
-                plugin['child'] = 'no'
-
-            self.plugin_list.append(plugin)
-
-            if child_subs is not '':
-                self.get_all_subs(child_subs, dir_name)
-
     # 获取一个类别的 unity 插件
     # 提交请求每一个插件的信息
     def get_plugin_list(self, response):
@@ -271,6 +242,35 @@ class AssetStoreSpider(Spider):
 
         file_name = self.dir_all + '/' + id + '_' + name + '.json'
         insert_to_sql(self.sql, file_name, self.table_name)
+
+    def get_all_subs(self, subs, dir):
+        for sub in subs:
+            #self.log(sub)
+
+            # 提取信息
+            name = sub.get('name', '')
+            count = sub.get('count', 0)
+            id = sub.get('id', 0)
+            child_subs = sub.get('subs', '')
+
+            # 处理数据
+            dir_name = dir + '/' + name
+            make_dir(dir_name)
+
+            plugin = {}
+            plugin['name'] = name
+            plugin['count'] = count
+            plugin['id'] = id
+            plugin['dir_name'] = dir_name
+            if child_subs == '':
+                plugin['child'] = 'yes'
+            else:
+                plugin['child'] = 'no'
+
+            self.plugin_list.append(plugin)
+
+            if child_subs is not '':
+                self.get_all_subs(child_subs, dir_name)
 
     # 暂时不请求插件的图片
     # content = response.meta.get('#1')
