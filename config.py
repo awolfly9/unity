@@ -1,7 +1,6 @@
 #-*- coding: utf-8 -*-
 
 database_name = 'unity'
-
 assetstore_table_name = 'assetstore'
 
 database_config = {

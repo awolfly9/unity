@@ -4,9 +4,7 @@ import json
 import logging
 import os
 from utils import log
-from SqlHelper import SqlHelper
-from config import *
-from utils import *
+from sqlhelper import SqlHelper
 
 if __name__ == '__main__':
     logging.basicConfig(

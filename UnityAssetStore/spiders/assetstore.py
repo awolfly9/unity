@@ -1,24 +1,21 @@
 # -*- coding: utf-8 -*-
 
-
-import os
-import re
 import json
-import time
+import logging
+import config
+import utils
 
 from scrapy.spiders import Spider
 from scrapy.http import Request, FormRequest
-from SqlHelper import SqlHelper
-
-from utils import *
-from config import *
+from proxymanager import proxymng
+from sqlhelper import SqlHelper
 
 
 class AssetStoreSpider(Spider):
     name = "assetstore"
 
     start_urls = [
-        #获取 unity 版本信息
+        # 获取 unity 版本信息
         'https://www.assetstore.unity3d.com/login'
     ]
 
@@ -29,14 +26,16 @@ class AssetStoreSpider(Spider):
         self.dir_plugins = 'Plugins/'
         self.dir_all = self.dir_plugins + 'all'
 
-        make_dir(self.dir_plugins)
-        make_dir(self.dir_all)
+        utils.make_dir(self.dir_plugins)
+        utils.make_dir(self.dir_all)
 
         # 所有插件的一个列表
         self.plugin_list = []
 
         self.sql = SqlHelper()
-        self.table_name = assetstore_table_name
+        self.table_name = config.assetstore_table_name
+
+        self.priority_adjust = 2
 
         # unity 的版本
         self.unity_version = ''
@@ -55,7 +54,7 @@ class AssetStoreSpider(Spider):
             'X-Unity-Session': '26c4202eb475d02864b40827dfff11a14657aa41',
         }
 
-        create_table(self.sql, self.table_name)
+        utils.create_table(self.sql, self.table_name)
 
     # 开始运行爬虫时调用，请求 unity 版本信息
     def start_requests(self):
@@ -84,6 +83,8 @@ class AssetStoreSpider(Spider):
                         'license_hash': '',
                     },
                     meta = {
+                        'download_timeout': 20,
+                        'is_proxy': False,
                     },
                     callback = self.get_unity_version,
             )
@@ -92,7 +93,7 @@ class AssetStoreSpider(Spider):
     # 并发送请求分类的消息
     def get_unity_version(self, response):
         content = json.loads(response.body)
-        self.log('content:%s' % response.body)
+        utils.log('content:%s' % response.body)
 
         self.unity_version = content.get('kharma_version', '')
         self.headers['X-Kharma-Version'] = self.unity_version
@@ -104,6 +105,10 @@ class AssetStoreSpider(Spider):
                 url = url,
                 method = 'GET',
                 headers = self.headers,
+                meta = {
+                    'download_timeout': 20,
+                    'is_proxy': False,
+                },
                 callback = self.get_categories,
         )
 
@@ -119,7 +124,7 @@ class AssetStoreSpider(Spider):
             name = category.get('name', '')
             subs = category.get('subs', '')
             dir_name = self.dir_plugins + name
-            make_dir(dir_name)
+            utils.make_dir(dir_name)
 
             if subs is not '':
                 self.get_all_subs(subs, dir_name)
@@ -158,14 +163,17 @@ class AssetStoreSpider(Spider):
                         'dir_name': dir_name,
                         'name': name,
                         'id': id,
+                        'download_timeout': 60,
+                        'is_proxy': False,
                     },
                     callback = self.get_plugin_list,
+                    errback = self.error_parse,
             )
 
     # 获取一个类别的 unity 插件
     # 提交请求每一个插件的信息
     def get_plugin_list(self, response):
-        self.log('get_plugin_list:%s' % response.url)
+        utils.log('get_plugin_list url:%s  response meta:%s' % (response.url, response.meta))
 
         file_name = response.meta.get('dir_name') + '/' + response.meta.get('name') + '.json'
         self.write_file(file_name, response.body)
@@ -175,10 +183,6 @@ class AssetStoreSpider(Spider):
         if results is not '':
             for plugin in results:
                 id = plugin.get('id', '')
-                name = plugin.get('name', '')
-
-                if (is_exists_sql(self.sql, id, self.table_name)):
-                    continue
 
                 url = 'https://www.assetstore.unity3d.com/api/en-US/content/overview/' + id + '.json'
                 yield Request(
@@ -186,23 +190,23 @@ class AssetStoreSpider(Spider):
                         meta = {
                             'dir_name': response.meta.get('dir_name'),
                             'id': id,
-                            'name': name,
+                            'download_timeout': 20,
                         },
                         headers = self.headers,
                         method = 'GET',
                         dont_filter = True,
                         callback = self.get_plugin,
+                        errback = self.error_parse,
                 )
 
     # 具体的获取到一个插件，并存储获取到的 json 文件
     # 请求获取插件的评论
     def get_plugin(self, response):
-        self.log('get_plugin:%s' % response.url)
+        utils.log('get_plugin url:%s  response meta:%s' % (response.url, response.meta))
 
         plugin = json.loads(response.body)
 
         id = response.meta.get('id')
-        name = response.meta.get('name')
 
         content = plugin.get('content', '')
         rating = content.get('rating')
@@ -210,42 +214,43 @@ class AssetStoreSpider(Spider):
 
         dir_name = response.meta.get('dir_name')
 
-        file_name = dir_name + '/' + id + '_' + name + '.json'
+        file_name = dir_name + '/' + id + '.json'
         self.write_file(file_name, response.body)
 
         # 获取插件的所有评论
-        if count is not '' and count is not 'null' and count is not None:
-            yield Request(
-                    url = 'https://www.assetstore.unity3d.com/api/en-US/content/comments/' + id + '/' + count +
-                          '.json',
-                    method = 'GET',
-                    dont_filter = True,
-                    headers = self.headers,
-                    meta = {
-                        'dir_name': dir_name,
-                        'name': name,
-                        'id': id,
-                    },
-                    callback = self.get_plugin_comments,
-            )
+        if count is '' or count is 'null' or count is None:
+            count = 3
+
+        yield Request(
+                url = 'https://www.assetstore.unity3d.com/api/en-US/content/comments/' + id + '/' +
+                      str(count) + '.json',
+                method = 'GET',
+                dont_filter = True,
+                headers = self.headers,
+                meta = {
+                    'dir_name': dir_name,
+                    'id': id,
+                    'download_timeout': 10,
+                },
+                callback = self.get_plugin_comments,
+                errback = self.error_parse,
+        )
 
     # 获取插件的所有评论
-    # 并请求插件的所有屏幕截图
     def get_plugin_comments(self, response):
-        self.log('get_plugin_comments:%s' % response.meta.get('dir_name'))
+        utils.log('get_plugin_comments:%s  response meta:%s' % (response.meta.get('dir_name'), response.meta))
 
-        name = response.meta.get('name')
         id = response.meta.get('id')
 
-        file_name = response.meta.get('dir_name') + '/' + id + '_' + name + '_comments.json'
+        file_name = response.meta.get('dir_name') + '/' + id + '_comments.json'
         self.write_file(file_name, response.body)
 
-        file_name = self.dir_all + '/' + id + '_' + name + '.json'
-        insert_to_sql(self.sql, file_name, self.table_name)
+        file_name = self.dir_all + '/' + id + '.json'
+        utils.insert_to_sql(self.sql, file_name, self.table_name)
 
     def get_all_subs(self, subs, dir):
         for sub in subs:
-            #self.log(sub)
+            #utils.log(sub)
 
             # 提取信息
             name = sub.get('name', '')
@@ -255,7 +260,7 @@ class AssetStoreSpider(Spider):
 
             # 处理数据
             dir_name = dir + '/' + name
-            make_dir(dir_name)
+            utils.make_dir(dir_name)
 
             plugin = {}
             plugin['name'] = name
@@ -282,7 +287,7 @@ class AssetStoreSpider(Spider):
     # 	link = image.get('link', '')
     # 	if 'http' not in link:
     # 		link = 'http:' + link
-    # 	self.log('link:%s' % link)
+    # 	utils.log('link:%s' % link)
     # 	name = image.get('name', title + '_' + str(i) + '.jpg')
     # 	name = name.replace('/', '_')
     # 	type = image.get('type', '')
@@ -306,8 +311,8 @@ class AssetStoreSpider(Spider):
 
     # 获取插件的所有截图
     # def get_plugin_image(self, response):
-    #     self.log('get_plugin_image:%s' % response.url)
-    #     self.log('get_plugin_image:%s' % response.meta.get('dir_name'))
+    #     utils.log('get_plugin_image:%s' % response.url)
+    #     utils.log('get_plugin_image:%s' % response.meta.get('dir_name'))
     #     dir_name = response.meta.get('dir_name')
     #     name = response.meta.get('name')
     #
@@ -316,14 +321,26 @@ class AssetStoreSpider(Spider):
     #         f.write(response.body)
     #         f.close()
 
+    def error_parse(self, failure):
+        request = failure.request
+        utils.log('error_parse url:%s meta:%s' % (request.url, request.meta), logging.ERROR)
+
+        proxy = request.meta.get('proxy', None)
+        if proxy:
+            proxymng.delete_proxy(proxy)
+            request.meta['proxy'] = proxymng.get_proxy()
+
+        request.priority = request.priority + self.priority_adjust
+        yield request
+
     def write_file(self, file_name, data):
         with open("%s" % file_name, 'w') as f:
-            f.write(format_json(data))
+            f.write(utils.format_json(data))
             f.close()
 
         names = file_name.split('/')
         name = names[len(names) - 1]
 
         with open("%s/%s" % (self.dir_all, name), 'w') as f:
-            f.write(format_json(data))
+            f.write(utils.format_json(data))
             f.close()

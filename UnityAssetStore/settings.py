@@ -14,11 +14,11 @@ BOT_NAME = 'UnityAssetStore'
 SPIDER_MODULES = ['UnityAssetStore.spiders']
 NEWSPIDER_MODULE = 'UnityAssetStore.spiders'
 
-
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
 #USER_AGENT = 'UnityAssetStore (+http://www.yourdomain.com)'
 
-#USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.87 Safari/537.36"
+#USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko)
+# Chrome/54.0.2840.87 Safari/537.36"
 
 # Obey robots.txt rules
 ROBOTSTXT_OBEY = False
@@ -56,13 +56,20 @@ ROBOTSTXT_OBEY = False
 # See http://scrapy.readthedocs.org/en/latest/topics/downloader-middleware.html
 DOWNLOADER_MIDDLEWARES = {
     #'scrapy.contrib.downloadermiddleware.httpproxy.HttpProxyMiddleware': 1020,
+    'scrapy.contrib.downloadermiddleware.retry.RetryMiddleware': None,
     'UnityAssetStore.middlewares.ProxyMiddleware': 100,
+    'UnityAssetStore.middlewares.CustomRetryMiddleware': 500,
 }
+
 # Enable or disable extensions
 # See http://scrapy.readthedocs.org/en/latest/topics/extensions.html
 #EXTENSIONS = {
 #    'scrapy.extensions.telnet.TelnetConsole': None,
 #}
+
+DOWNLOAD_HANDLERS = {
+    's3': None,
+}
 
 # Configure item pipelines
 # See http://scrapy.readthedocs.org/en/latest/topics/item-pipeline.html
@@ -94,5 +101,3 @@ DOWNLOADER_MIDDLEWARES = {
 
 # LOG_FILE = 'log/%s.log' % BOT_NAME
 # LOG_ENABLED = True
-
-

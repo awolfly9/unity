@@ -1,12 +1,13 @@
 #-*- coding: utf-8 -*-
+
 import json
 import logging
 import os
 import traceback
+import config
 
 from bs4 import CData
 from bs4 import NavigableString
-from config import *
 
 
 def log(msg, level = logging.DEBUG):
@@ -89,7 +90,7 @@ def export_to_sql(sql, dir_all):
         file_name = '%s/%s' % (dir_all, file)
         log('export_to_sql file_name:%s' % file_name)
 
-        insert_to_sql(sql, file_name, assetstore_table_name)
+        insert_to_sql(sql, file_name, config.assetstore_table_name)
 
 
 def insert_to_sql(sql, file_name, table_name):

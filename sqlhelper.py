@@ -7,7 +7,7 @@ import random
 import traceback
 import mysql.connector
 
-from Singleton import Singleton
+from singleton import Singleton
 from mysql.connector import errorcode
 from utils import log
 from config import *
