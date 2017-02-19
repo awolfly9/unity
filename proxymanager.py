@@ -11,11 +11,10 @@ class ProxyManager(object):
         self.index = 0
         self.proxys = []
 
-        self.update_proxy()
-
-        # self.address = 'http://127.0.0.1:8000'
-        self.address = 'http://101.200.55.192:8000'
+        self.address = 'http://127.0.0.1:8000'
         self.name = 'assetstore'
+
+        self.update_proxy()
 
     def update_proxy(self):
         try:

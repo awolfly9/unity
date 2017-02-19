@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Scrapy settings for UnityAssetStore project
+# Scrapy settings for unityassetstore project
 #
 # For simplicity, this file contains only settings considered important or
 # commonly used. You can find more settings consulting the documentation:
@@ -9,13 +9,13 @@
 #     http://scrapy.readthedocs.org/en/latest/topics/downloader-middleware.html
 #     http://scrapy.readthedocs.org/en/latest/topics/spider-middleware.html
 
-BOT_NAME = 'UnityAssetStore'
+BOT_NAME = 'unityassetstore'
 
-SPIDER_MODULES = ['UnityAssetStore.spiders']
-NEWSPIDER_MODULE = 'UnityAssetStore.spiders'
+SPIDER_MODULES = ['unityassetstore.spiders']
+NEWSPIDER_MODULE = 'unityassetstore.spiders'
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
-#USER_AGENT = 'UnityAssetStore (+http://www.yourdomain.com)'
+#USER_AGENT = 'unityassetstore (+http://www.yourdomain.com)'
 
 #USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko)
 # Chrome/54.0.2840.87 Safari/537.36"
@@ -49,7 +49,7 @@ ROBOTSTXT_OBEY = False
 # Enable or disable spider middlewares
 # See http://scrapy.readthedocs.org/en/latest/topics/spider-middleware.html
 #SPIDER_MIDDLEWARES = {
-#    'UnityAssetStore.middlewares.MyCustomSpiderMiddleware': 543,
+#    'unityassetstore.middlewares.MyCustomSpiderMiddleware': 543,
 #}
 
 # Enable or disable downloader middlewares
@@ -57,8 +57,8 @@ ROBOTSTXT_OBEY = False
 DOWNLOADER_MIDDLEWARES = {
     #'scrapy.contrib.downloadermiddleware.httpproxy.HttpProxyMiddleware': 1020,
     'scrapy.contrib.downloadermiddleware.retry.RetryMiddleware': None,
-    'UnityAssetStore.middlewares.ProxyMiddleware': 100,
-    'UnityAssetStore.middlewares.CustomRetryMiddleware': 500,
+    'unityassetstore.middlewares.ProxyMiddleware': 100,
+    'unityassetstore.middlewares.CustomRetryMiddleware': 500,
 }
 
 # Enable or disable extensions
