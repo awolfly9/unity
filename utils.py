@@ -90,7 +90,26 @@ def export_to_sql(sql, dir_all):
         file_name = '%s/%s' % (dir_all, file)
         log('export_to_sql file_name:%s' % file_name)
 
-        insert_to_sql(sql, file_name, config.assetstore_table_name)
+        names = file_name.split('_')
+        if names[len(names) - 1] == 'list.json' or names[len(names) - 1] == 'comments.json':
+            continue
+
+        if file_name.find('.json') == -1:
+            continue
+
+        name = file[:-5]
+
+        try:
+            name = int(name)
+        except:
+            pass
+        if type(name) is not int:
+            continue
+
+        try:
+            insert_to_sql(sql, file_name, config.assetstore_table_name)
+        except:
+            pass
 
 
 def insert_to_sql(sql, file_name, table_name):

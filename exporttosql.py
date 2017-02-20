@@ -1,14 +1,18 @@
 #-*- coding: utf-8 -*-
 
-import json
 import logging
-import os
-from utils import log
+import utils
+import config
+
 from sqlhelper import SqlHelper
 
 if __name__ == '__main__':
     logging.basicConfig(
-            filename = 'main.log',
+            filename = 'log/exporttosql.log',
             format = '%(levelname)s %(asctime)s: %(message)s',
-            level = logging.NOTSET
+            level = logging.DEBUG
     )
+
+    sql = SqlHelper()
+    utils.create_table(sql, config.assetstore_table_name)
+    utils.export_to_sql(sql, 'Plugins/all')
