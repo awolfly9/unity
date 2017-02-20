@@ -54,6 +54,9 @@ class AssetStoreSpider(Spider):
             'X-Unity-Session': '26c4202eb475d02864b40827dfff11a14657aa41',
         }
 
+        self.init()
+
+    def init(self):
         utils.create_table(self.sql, self.table_name)
 
     # 开始运行爬虫时调用，请求 unity 版本信息
