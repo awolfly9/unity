@@ -101,3 +101,5 @@ DOWNLOAD_HANDLERS = {
 
 # LOG_FILE = 'log/%s.log' % BOT_NAME
 # LOG_ENABLED = True
+
+IS_USE_PROXY = True

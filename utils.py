@@ -6,9 +6,6 @@ import os
 import traceback
 import config
 
-from bs4 import CData
-from bs4 import NavigableString
-
 
 def log(msg, level = logging.DEBUG):
     logging.log(level, msg)
@@ -20,22 +17,6 @@ def log(msg, level = logging.DEBUG):
 
         for line in traceback.format_stack():
             logging.log(level, line.strip())
-
-
-def get_first_text(soup, strip = False, types = (NavigableString, CData)):
-    data = None
-    for s in soup._all_strings(strip, types = types):
-        data = s
-        break
-    return data
-
-
-def get_texts(soup, strip = False, types = (NavigableString, CData)):
-    texts = []
-    for s in soup._all_strings(strip, types = types):
-        texts.append(s)
-
-    return texts
 
 
 def make_dir(dir):

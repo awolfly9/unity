@@ -5,6 +5,8 @@ import requests
 import json
 import utils
 
+from scrapy.utils.project import get_project_settings
+
 
 class ProxyManager(object):
     def __init__(self):
@@ -29,20 +31,26 @@ class ProxyManager(object):
             pass
 
     def get_proxy(self):
-        if len(self.proxys) <= 10:
-            self.update_proxy()
+        if get_project_settings().get('IS_USE_PROXY', True):
+            if len(self.proxys) <= 10:
+                self.update_proxy()
 
-        if len(self.proxys) > 0:
-            self.index = self.index + 1
-            self.index = self.index % len(self.proxys)
+            if len(self.proxys) > 0:
+                self.index = self.index + 1
+                self.index = self.index % len(self.proxys)
 
-            proxy = 'http://%s:%s' % (self.proxys[self.index].get('ip'), self.proxys[self.index].get('port'))
-            utils.log('++++++++++proxy:%s++++++++++' % proxy)
-            return proxy
+                proxy = 'http://%s:%s' % (self.proxys[self.index].get('ip'), self.proxys[self.index].get('port'))
+                utils.log('++++++++++proxy:%s++++++++++' % proxy)
+                return proxy
 
-        return None
+            return None
+        else:
+            return None
 
     def delete_proxy(self, proxy):
+        if proxy == None:
+            return
+
         try:
             rets = proxy.split(':')
             ip = rets[1]
