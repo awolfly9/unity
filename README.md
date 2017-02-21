@@ -6,22 +6,14 @@
 python 2.7.12
 ###运行依赖包
 * scrapy
-* mysql-connector-python
+* mysql-connector-python [安装参考](http://stackoverflow.com/questions/31748278/how-do-you-install-mysql-connector-python-development-version-through-pip) 
 * requests
 
-###Mysql 配置	
+###安装 Mysql
+
 * 安装 Mysql 并启动
 * 安装 mysql-connector-python [安装参考](http://stackoverflow.com/questions/31748278/how-do-you-install-mysql-connector-python-development-version-through-pip)
-* 在 config.py 更改数据库配置
-	
-```
-		database_config = {
-    		'host': 'localhost',
-    		'port': 3306,
-    		'user': 'root',
-    		'password': '123456',
-		}
-```
+
 ##下载使用
 将项目克隆到本地
 
@@ -33,6 +25,20 @@ $ git clone https://github.com/awolfly9/unity.git
 
 ```
 $ cd unity
+```
+
+修改 mysql 数据库配置 [config.py](https://github.com/awolfly9/unity/blob/master/config.py) 中 database_config 的用户名和密码为数据库的用户名和密码
+
+```
+$ vim config.py
+---------------
+
+database_config = {
+	'host': 'localhost',
+	'port': 3306,
+	'user': 'root',
+	'password': '123456',
+}
 ```
 
 运行爬虫
